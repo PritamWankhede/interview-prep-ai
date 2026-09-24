@@ -1,0 +1,186 @@
+// ─────────────────────────────────────────────────────────
+// Prisma Schema — InterviewPrep AI
+// ─────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum Category {
+  DSA
+  SYSTEM_DESIGN
+  BEHAVIORAL
+  FRONTEND
+  BACKEND
+  DATABASE
+}
+
+enum TargetRole {
+  FRONTEND_DEV
+  BACKEND_DEV
+  FULLSTACK_DEV
+  DATA_ENGINEER
+  DEVOPS
+  GENERAL
+}
+
+enum SessionStatus {
+  PENDING
+  EVALUATED
+  SKIPPED
+}
+
+// ─── AUTH MODELS ─────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?   // null for OAuth users
+  image         String?
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  practiceSessions PracticeSession[]
+  progress         UserProgress[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  access_token      String? @db.Text
+  refresh_token     String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── QUESTION BANK ───────────────────────────────────────
+
+model Question {
+  id          String     @id @default(cuid())
+  title       String
+  description String     @db.Text
+  difficulty  Difficulty
+  category    Category
+  targetRole  TargetRole
+  tags        String[]
+  hints       String[]
+  isActive    Boolean    @default(true)
+  createdBy   String?    // admin userId
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  practiceSessions PracticeSession[]
+
+  @@map("questions")
+}
+
+// ─── PRACTICE SESSIONS ───────────────────────────────────
+
+model PracticeSession {
+  id          String        @id @default(cuid())
+  userId      String
+  questionId  String
+  userAnswer  String        @db.Text
+  timeTaken   Int?          // in seconds
+  status      SessionStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+  feedback Feedback?
+
+  @@map("practice_sessions")
+}
+
+// ─── AI FEEDBACK ─────────────────────────────────────────
+
+model Feedback {
+  id            String   @id @default(cuid())
+  sessionId     String   @unique
+  overallScore  Int      // 0–100
+  clarity       Int      // 0–100
+  depth         Int      // 0–100
+  accuracy      Int      // 0–100
+  strengths     String[]
+  improvements  String[]
+  idealAnswer   String   @db.Text
+  rawAiResponse Json     // full JSONB response from Groq
+  createdAt     DateTime @default(now())
+
+  session PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("feedbacks")
+}
+
+// ─── PROGRESS TRACKING ───────────────────────────────────
+
+model UserProgress {
+  id             String   @id @default(cuid())
+  userId         String
+  date           DateTime @db.Date
+  questionsCount Int      @default(0)
+  avgScore       Float    @default(0)
+  streak         Int      @default(0)
+  totalTime      Int      @default(0) // seconds
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("user_progress")
+}
