@@ -2,7 +2,7 @@
 
 An AI-powered interview preparation platform built with Next.js 16. Practice real interview questions, get instant AI feedback on your answers, follow a personalized 7-day study plan, and track your progress.
 
-**Live Demo:** [interview-prep-ai.vercel.app](https://interview-prep-ai.vercel.app)
+**Live Demo:** [interview-prep-ai-blush-iota.vercel.app](https://interview-prep-ai-blush-iota.vercel.app)
 
 **Built by:** [Pritam Wankhede](https://github.com/PritamWankhede) · [LinkedIn](https://www.linkedin.com/in/pritamwankhede/)
 
